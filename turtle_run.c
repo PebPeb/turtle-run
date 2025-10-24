@@ -29,6 +29,24 @@
 #include <stdio.h>
 #include <unistd.h>     // usleep
 #include <sys/ioctl.h>  // ioctl, winsize
+#include <string.h>
+
+enum turtle_states {
+  HIDE_0,
+  HIDE_1,
+  HIDE_2,
+  HIDE_3,
+  HIDE_4,
+  START_WALKING,
+  WALK_0,
+  WALK_1,
+  WALK_2,
+  WALK_3,
+  WALK_4
+};
+
+#define FRAME_RATE 200000 // u seconds
+
 
 int main() {
     struct winsize w;
@@ -37,79 +55,137 @@ int main() {
     int width = w.ws_col; 
     int height = w.ws_row;
 
-    char temp = '-';
-
-
-
     initscr();
+    noecho();
+    curs_set(0);
 
-    for (int i = 0; i < 10; i++) {
-      for (int x = 0 + i; x < 10 + i; x++)
-        for (int y = 0; y < 10; y++)
-          mvaddch(y, x, temp);
-  
+    FILE *file;
+    char line[256];
+
+    // Open file for reading
+    // if (file == NULL) {
+    //     perror("Error opening file");
+    //     return 1;
+    // }
+
+    
+    int currentState = START_WALKING;
+    int nextState = START_WALKING;
+    
+    
+    int stallState = 0;
+
+    int y = 0;
+    int x = 0;
+    int y_offset = 10;
+
+    bool refresh = true;
+    bool forwardBackward = true; // True for forward
+
+    while (x < width) {
+      y = 0;
+
+      // State Machine
+      switch (currentState) {
+        case HIDE_0:
+          file = fopen("./art/hide_0.txt", "r");
+          nextState = HIDE_1;
+          break;
+        case HIDE_1:
+          file = fopen("./art/hide_1.txt", "r");
+          nextState = HIDE_2;
+          break;
+        case HIDE_2:
+          file = fopen("./art/hide_2.txt", "r");
+          nextState = HIDE_3;
+          break;
+        case HIDE_3:
+          file = fopen("./art/hide_3.txt", "r");
+          nextState = HIDE_4;
+          break;
+        case HIDE_4:
+          file = fopen("./art/hide_4.txt", "r");
           
-      refresh();
-      usleep(200000);
-      clear();
+          if (stallState == 0) {
+            nextState = HIDE_4;
+            stallState++;
+          } else if (stallState > 2) {
+            refresh = false;
+            nextState = HIDE_4;
+            stallState++;
+          } else {
+            refresh = true;
+            nextState = START_WALKING;
+          }
+          break;
+        case START_WALKING:
+          file = fopen("./art/start_walk.txt", "r");
+          nextState = WALK_0;
+          x++;
+          break;
+        case WALK_0:
+          file = fopen("./art/walk_0.txt", "r");
+          nextState = WALK_1;
+          forwardBackward = true;
+          x++;
+          break;
+        case WALK_1:
+          file = fopen("./art/walk_1.txt", "r");
+          if (forwardBackward)
+            nextState = WALK_2;
+          else 
+            nextState = WALK_0;
+          x++;
+          break;
+        case WALK_2:
+          file = fopen("./art/walk_2.txt", "r");
+          if (forwardBackward)
+            nextState = WALK_3;
+          else
+            nextState = WALK_1;
+          x++;
+          break;
+        case WALK_3:
+          file = fopen("./art/walk_3.txt", "r");
+          if (forwardBackward)
+            nextState = WALK_4;
+          else
+            nextState = WALK_2;
+          x++;
+          break;
+        case WALK_4:
+          file = fopen("./art/walk_4.txt", "r");
+          nextState = WALK_3;
+          forwardBackward = false;
+          x++;
+          break;
+      }
+
+      if (!file) {
+        perror("Error opening file");
+        return 0;
+      }
+
+      // Display
+      while (fgets(line, sizeof(line), file)) {
+        int len = strlen(line);
+        
+        for (int x_offset = 0; x_offset < len; x_offset++) {
+          char temp = line[x_offset];
+          mvaddch(y + y_offset, x + x_offset, temp);  // example: drawing characters to screen
+        }
+        y++;
+      }
+
+      fclose(file);
+      currentState = nextState;
+      if (refresh)
+        refresh();
+      usleep(FRAME_RATE);
+      if (refresh)
+        clear();
     }
+
     endwin();
-
-    // signal(SIGINT, SIG_IGN);
-    // noecho();
-    // curs_set(0);
-    // nodelay(stdscr, TRUE);
-    // leaveok(stdscr, TRUE);
-    // scrollok(stdscr, FALSE);
-
-    // for (x = COLS - 1; ; --x) {
-    //     if (LOGO == 1) {
-    //         if (add_sl(x) == ERR) break;
-    //     }
-    //     else if (C51 == 1) {
-    //         if (add_C51(x) == ERR) break;
-    //     }
-    //     else {
-    //         if (add_D51(x) == ERR) break;
-    //     }
-    //     getch();
-    //     refresh();
-    //     usleep(40000);
-    // }
-    // mvcur(0, COLS - 1, LINES - 1, 0);
-    // endwin();
-
-    // We'll draw 4 lines spaced evenly vertically
-    // int num_lines = 4;
-    // int line_rows[4];
-
-    // for (int i = 0; i < num_lines; ++i) {
-    //     line_rows[i] = (height / (num_lines + 1)) * (i + 1);
-    // }
-
-    // // Hide the cursor
-    // printf("\033[?25l");
-    // fflush(stdout);
-
-    // for (int col = 0; col < width; ++col) {
-    //     // Clear the screen on each frame
-    //     printf("\033[2J");
-
-    //     // Draw all 4 lines at the current column
-    //     for (int i = 0; i < num_lines; ++i) {
-    //         int row = line_rows[i];
-    //         printf("\033[%d;%dH", row, col + 1); // Move to (row, col)
-    //         putchar('-');
-    //     }
-
-    //     fflush(stdout);
-    //     usleep(30000); // Delay to slow down animation
-    // }
-
-    // // Move cursor to bottom and show it again
-    // printf("\033[%d;1H", height);
-    // printf("\033[?25h");
-    // fflush(stdout);
-
     return 0;
 }
