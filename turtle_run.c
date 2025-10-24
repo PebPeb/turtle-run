@@ -1,34 +1,9 @@
-// #include <stdio.h>
-
-// int main() {
-//     FILE *file;
-//     char filename[] = "./art/shell.txt"; // Change to your file's name
-//     int ch;
-
-//     // Open the file in read mode
-//     file = fopen(filename, "r");
-
-//     if (file == NULL) {
-//         perror("Error opening file");
-//         return 1;
-//     }
-
-//     // Read and print the contents character by character
-//     while ((ch = fgetc(file)) != EOF) {
-//         putchar(ch);
-//     }
-
-//     // Close the file
-//     fclose(file);
-
-//     return 0;
-// }
 
 #include <curses.h>
 #include <signal.h>
 #include <stdio.h>
-#include <unistd.h>     // usleep
-#include <sys/ioctl.h>  // ioctl, winsize
+#include <unistd.h>     
+#include <sys/ioctl.h> 
 #include <string.h>
 
 enum turtle_states {
@@ -45,12 +20,14 @@ enum turtle_states {
   WALK_4
 };
 
-#define FRAME_RATE 200000 // u seconds
+#define FRAME_RATE 120000     // u seconds
+#define HIDE_RATE  300000
+#define INITIAL_X_OFFSET -35
 
-
-int main() {
+int main(int argc, char *argv[]) {
+    
     struct winsize w;
-    ioctl(0, TIOCGWINSZ, &w);   // Get terminal size
+    ioctl(0, TIOCGWINSZ, &w);
 
     int width = w.ws_col; 
     int height = w.ws_row;
@@ -62,26 +39,21 @@ int main() {
     FILE *file;
     char line[256];
 
-    // Open file for reading
-    // if (file == NULL) {
-    //     perror("Error opening file");
-    //     return 1;
-    // }
-
-    
     int currentState = START_WALKING;
     int nextState = START_WALKING;
-    
-    
+  
     int stallState = 0;
 
     int y = 0;
-    int x = 0;
-    int y_offset = 10;
+    int x = INITIAL_X_OFFSET;
+    int y_offset = height/4;
 
     bool refresh = true;
     bool forwardBackward = true; // True for forward
+    bool hideTurtle = false;
+    bool turtleHid = false;
 
+    int wait = FRAME_RATE;
     while (x < width) {
       y = 0;
 
@@ -89,44 +61,83 @@ int main() {
       switch (currentState) {
         case HIDE_0:
           file = fopen("./art/hide_0.txt", "r");
-          nextState = HIDE_1;
+          hideTurtle = false;
+          
+          if (stallState == 0) {
+            nextState = HIDE_0;
+            stallState++;
+          } else if (stallState < 4) {
+            refresh = false;
+            nextState = HIDE_0;
+            stallState++;
+          } else {
+            refresh = true;
+            nextState = HIDE_1;
+            stallState = 0;
+          }
+
           break;
         case HIDE_1:
           file = fopen("./art/hide_1.txt", "r");
-          nextState = HIDE_2;
+          if (hideTurtle) 
+            nextState = HIDE_0;
+          else
+            nextState = HIDE_2;
           break;
         case HIDE_2:
           file = fopen("./art/hide_2.txt", "r");
-          nextState = HIDE_3;
+          if (hideTurtle) 
+            nextState = HIDE_1;
+          else
+            nextState = HIDE_3;
           break;
         case HIDE_3:
           file = fopen("./art/hide_3.txt", "r");
-          nextState = HIDE_4;
+          if (hideTurtle) 
+            nextState = HIDE_2;
+          else
+            nextState = HIDE_4;
           break;
         case HIDE_4:
+          wait = HIDE_RATE;
           file = fopen("./art/hide_4.txt", "r");
           
-          if (stallState == 0) {
+          if (hideTurtle) 
+            nextState = HIDE_3;
+          else if (stallState == 0) {
             nextState = HIDE_4;
             stallState++;
-          } else if (stallState > 2) {
+          } else if (stallState < 2) {
             refresh = false;
             nextState = HIDE_4;
             stallState++;
           } else {
             refresh = true;
             nextState = START_WALKING;
+            stallState = 0;
           }
           break;
         case START_WALKING:
+          wait = FRAME_RATE;
           file = fopen("./art/start_walk.txt", "r");
-          nextState = WALK_0;
+          if (hideTurtle) 
+            nextState = HIDE_4;
+          else
+            nextState = WALK_0;
           x++;
           break;
         case WALK_0:
+          wait = FRAME_RATE;
           file = fopen("./art/walk_0.txt", "r");
           nextState = WALK_1;
           forwardBackward = true;
+
+          if (x >= (width/6) && !turtleHid) {
+            turtleHid = true;
+            hideTurtle = true;
+            nextState = START_WALKING;
+          }
+
           x++;
           break;
         case WALK_1:
@@ -172,7 +183,7 @@ int main() {
         
         for (int x_offset = 0; x_offset < len; x_offset++) {
           char temp = line[x_offset];
-          mvaddch(y + y_offset, x + x_offset, temp);  // example: drawing characters to screen
+          mvaddch(y + y_offset, x + x_offset, temp);
         }
         y++;
       }
@@ -181,7 +192,7 @@ int main() {
       currentState = nextState;
       if (refresh)
         refresh();
-      usleep(FRAME_RATE);
+      usleep(wait);
       if (refresh)
         clear();
     }
