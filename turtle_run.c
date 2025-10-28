@@ -49,7 +49,8 @@ int main(int argc, char *argv[]) {
     noecho();
     curs_set(0);
 
-    char* line;     // Array used for printing out
+    const char** image = NULL; 
+    int imageSize;
 
     int currentState = START_WALKING;
     int nextState = START_WALKING;
@@ -66,9 +67,6 @@ int main(int argc, char *argv[]) {
     bool turtleHid = false;
 
     int wait = FRAME_RATE;
-
-    char** image; 
-    int imageSize;
 
     while (x < width) {
       y = 0;
