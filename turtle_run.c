@@ -5,6 +5,7 @@
 #include <unistd.h>     
 #include <sys/ioctl.h> 
 #include <string.h>
+#include "turtle_run.h"
 
 enum turtle_states {
   HIDE_0,
@@ -32,12 +33,23 @@ int main(int argc, char *argv[]) {
     int width = w.ws_col; 
     int height = w.ws_row;
 
+    const char* start_walking[] = {SHELL0, SHELL1, SHELL2, SHELL3, SHELL4, START_WALK0, START_WALK1};
+    const char* walk0[] = {SHELL0, SHELL1, SHELL2, SHELL3, SHELL4, WALK0_0, WALK0_1};
+    const char* walk1[] = {SHELL0, SHELL1, SHELL2, SHELL3, SHELL4, WALK1_0, WALK1_1};
+    const char* walk2[] = {SHELL0, SHELL1, SHELL2, SHELL3, SHELL4, WALK2_0, WALK2_1};
+    const char* walk3[] = {SHELL0, SHELL1, SHELL2, SHELL3, SHELL4, WALK3_0, WALK3_1};
+    const char* walk4[] = {SHELL0, SHELL1, SHELL2, SHELL3, SHELL4, WALK4_0, WALK4_1};
+    const char* hide0[] = {EMPTY, SHELL0, SHELL1, HIDE0_2, HIDE0_3, HIDE0_4, HIDE0_5};
+    const char* hide1[] = {EMPTY, SHELL0, SHELL1, HIDE1_2, HIDE1_3, HIDE1_4, HIDE1_5};
+    const char* hide2[] = {EMPTY, SHELL0, SHELL1, HIDE2_2, HIDE2_3, HIDE2_4, HIDE2_5};
+    const char* hide3[] = {SHELL0, SHELL1, HIDE3_2, HIDE3_3, HIDE3_4, HIDE3_5, HIDE3_6};
+    const char* hide4[] = {SHELL0, SHELL1, HIDE4_2, HIDE4_3, HIDE4_4, HIDE4_5, HIDE4_6};
+
     initscr();
     noecho();
     curs_set(0);
 
-    FILE *file;
-    char line[256];
+    char* line;     // Array used for printing out
 
     int currentState = START_WALKING;
     int nextState = START_WALKING;
@@ -54,13 +66,18 @@ int main(int argc, char *argv[]) {
     bool turtleHid = false;
 
     int wait = FRAME_RATE;
+
+    char** image; 
+    int imageSize;
+
     while (x < width) {
       y = 0;
 
       // State Machine
       switch (currentState) {
         case HIDE_0:
-          file = fopen("./art/hide_0.txt", "r");
+          image = hide0;
+          imageSize = sizeof(hide0) / sizeof(hide0[0]);
           hideTurtle = false;
           
           if (stallState == 0) {
@@ -78,21 +95,24 @@ int main(int argc, char *argv[]) {
 
           break;
         case HIDE_1:
-          file = fopen("./art/hide_1.txt", "r");
+          image = hide1;
+          imageSize = sizeof(hide1) / sizeof(hide1[0]);
           if (hideTurtle) 
             nextState = HIDE_0;
           else
             nextState = HIDE_2;
           break;
         case HIDE_2:
-          file = fopen("./art/hide_2.txt", "r");
+          image = hide2;
+          imageSize = sizeof(hide2) / sizeof(hide2[0]);
           if (hideTurtle) 
             nextState = HIDE_1;
           else
             nextState = HIDE_3;
           break;
         case HIDE_3:
-          file = fopen("./art/hide_3.txt", "r");
+          image = hide3;
+          imageSize = sizeof(hide3) / sizeof(hide3[0]);          
           if (hideTurtle) 
             nextState = HIDE_2;
           else
@@ -100,7 +120,8 @@ int main(int argc, char *argv[]) {
           break;
         case HIDE_4:
           wait = HIDE_RATE;
-          file = fopen("./art/hide_4.txt", "r");
+          image = hide4;
+          imageSize = sizeof(hide4) / sizeof(hide4[0]);
           
           if (hideTurtle) 
             nextState = HIDE_3;
@@ -119,7 +140,9 @@ int main(int argc, char *argv[]) {
           break;
         case START_WALKING:
           wait = FRAME_RATE;
-          file = fopen("./art/start_walk.txt", "r");
+          image = start_walking;
+          imageSize = sizeof(start_walking) / sizeof(start_walking[0]);
+
           if (hideTurtle) 
             nextState = HIDE_4;
           else
@@ -128,7 +151,9 @@ int main(int argc, char *argv[]) {
           break;
         case WALK_0:
           wait = FRAME_RATE;
-          file = fopen("./art/walk_0.txt", "r");
+          image = walk0;
+          imageSize = sizeof(walk0) / sizeof(walk0[0]);
+
           nextState = WALK_1;
           forwardBackward = true;
 
@@ -141,7 +166,8 @@ int main(int argc, char *argv[]) {
           x++;
           break;
         case WALK_1:
-          file = fopen("./art/walk_1.txt", "r");
+          image = walk1;
+          imageSize = sizeof(walk1) / sizeof(walk1[0]);
           if (forwardBackward)
             nextState = WALK_2;
           else 
@@ -149,7 +175,8 @@ int main(int argc, char *argv[]) {
           x++;
           break;
         case WALK_2:
-          file = fopen("./art/walk_2.txt", "r");
+          image = walk2;
+          imageSize = sizeof(walk2) / sizeof(walk2[0]);
           if (forwardBackward)
             nextState = WALK_3;
           else
@@ -157,7 +184,8 @@ int main(int argc, char *argv[]) {
           x++;
           break;
         case WALK_3:
-          file = fopen("./art/walk_3.txt", "r");
+          image = walk3;
+          imageSize = sizeof(walk3) / sizeof(walk3[0]);
           if (forwardBackward)
             nextState = WALK_4;
           else
@@ -165,33 +193,29 @@ int main(int argc, char *argv[]) {
           x++;
           break;
         case WALK_4:
-          file = fopen("./art/walk_4.txt", "r");
+          image = walk4;
+          imageSize = sizeof(walk4) / sizeof(walk4[0]);
           nextState = WALK_3;
           forwardBackward = false;
           x++;
           break;
       }
-
-      if (!file) {
-        perror("Error opening file");
-        return 0;
-      }
-
-      // Display
-      while (fgets(line, sizeof(line), file)) {
-        int len = strlen(line);
-        
-        for (int x_offset = 0; x_offset < len; x_offset++) {
-          char temp = line[x_offset];
-          mvaddch(y + y_offset, x + x_offset, temp);
-        }
-        y++;
-      }
-
-      fclose(file);
+      
       currentState = nextState;
-      if (refresh)
+      if (refresh) {
+        // Display
+        for (int i = 0; i < imageSize; i++) {
+          const char *line = image[i];
+          int len = strlen(line);
+          printf("%s\n", line);
+          for (int x_offset = 0; x_offset < len; x_offset++) {
+            char temp = line[x_offset];
+            mvaddch(y + y_offset, x + x_offset, temp);
+          }
+          y++;
+        }
         refresh();
+      }
       usleep(wait);
       if (refresh)
         clear();
