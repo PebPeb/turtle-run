@@ -9,7 +9,7 @@ CFLAGS=-O -Wall
 
 all: turtle-run
 
-turtle-run: turtle_run.c 
+turtle-run: turtle_run.c turtle_run.h
 	$(CC) $(CFLAGS) -o turtle-run turtle_run.c -lncurses
 
 clean:
