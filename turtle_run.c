@@ -1,3 +1,23 @@
+/******************************************************************************
+ * File:    turtle_run.c
+ * Author:  Bryce Keen
+ * Date:    2025-10-27
+ * Version: 1.0
+ *
+ * Description:
+ *   A Turtle that walks across the screen
+ *
+ * Compilation:
+ *   gcc turtle_run.c -o turtle_run -lncurses
+ *
+ * Usage:
+ *   ./turtle_run
+ *
+ * Dependencies:
+ *   - ncurses
+ *   - turtle_run.h (contains ASCII art frames)
+ *
+ ******************************************************************************/
 
 #include <curses.h>
 #include <signal.h>
